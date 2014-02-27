@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang='cn'>
+	<head>
+		<meta charset='utf-8'>
+        	<title>简单画图应用</title>
+        <style >
+        	*{
+        		margin: 0 ;
+        		padding : 0 ;
+        		border : 0 ;
+        	}
+        	body{
+        		width:1000px ;
+        		margin: 0 auto ;
+        		background:#ddd ;
+        	}
+        	#main_container{
+        		width:800px ;
+        		height:500px ;
+        		margin: 60px auto ;
+        		border: 1px solid #ddd ;
+        	}
+			#icon_panel{
+				-moz-border-radius:5px ;
+				-webkit-border-radius:5px ;
+				border-radius:5px ;
+				float : left ;
+				width : 50px ;
+				height:	500px ;
+				background: #eee ;
+				-moz-box-shadow: 2px 2px 5px black ;
+				-webkit-box-shadow: 2px 2px 5px black ;
+				box-shadow: 2px 2px 5px black ;
+			}
+			#draw_panel{
+				border:1px solid #ddd ;
+				padding:5px ;
+				width:700px ;
+				height:500px ;
+				float:right ;
+				-moz-border-radius:5px ;
+				-webkit-border-radius:5px ;
+				border-radius:5px ;
+				background:#eee ;
+			}
+			#toolbar{
+				border:thin solid #eee ;
+				background:#0099cc;
+				width:700px ;
+				height:50px ;
+				float:right ;
+				padding-left:10px ;
+			}
+        </style>
+	</head>
+	<body>
+		<div id="main_container">
+        	<canvas id="icon_panel" width="50" height="500"></canvas>
+        	<div id='toolbar'></div>
+			<canvas id="draw_panel" width="700" height="500"></canvas>
+		</div>
+	<script src="paint.js"></script>
+
+	</body>
+</html>
