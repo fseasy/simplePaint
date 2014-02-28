@@ -35,10 +35,25 @@ var iconsCanvas = document.getElementById('icon_panel') ,
 	roundRectRadiusValue = 0 , 
 	eraserRadiusLabel = document.createElement('label') ,
 	eraserRadiusSelect = document.createElement('select') ,
-	eraserRadiusValue = 10 ,
+	eraserRadiusValue = 30 ,
 	toolbar = document.getElementById('toolbar') 
 	;
-
+	CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+		
+		if(Math.abs(w)/2 < r || Math.abs(h/2) < r || r < 0) return ; 
+		this.beginPath() ;
+		//drawPoint.call(this,x,y+h-r) ;
+		//drawPoint.call(this,x,y) ;
+		//this.arc(w,h,30,0,Math.PI*2,false) ;
+		this.moveTo(x,y+h-r) ;
+		this.arcTo(x,y,x+100,y,r) ;
+		this.arcTo(x+w,y,x+w,y+r,r) ;
+		this.arcTo(x+w,y+h,x+w-r,y+h,r) ;
+		this.arcTo(x,y+h,x,y+h-r,r) ;
+		this.stroke() ;
+		console.log([x,y,w,h,r]) ;
+		this.closePath() ;
+	}
 function drawIconBorder(range,shadowOffsetX,shadowOffsetY,shadowBlur){
 	
 	iconsContext.save() ;
@@ -302,43 +317,43 @@ function refreshIcon(pointedIcon,eventType){
 	}
 }
 function toolbarInit(){
-	lineWidthSelectLabel.innerText = '线宽:' ;
+	lineWidthSelectLabel.innerHTML = '线宽:' ;
 	lineWidthSelectLabel.setAttribute('id','lineWidthSelectLabel') ;
 	var option_value = [0.5,1,2.5,3,5,10] ;
 	for(var i = 0 ; i < option_value.length ; i++){
 		var option = document.createElement('option') ;
 		option.setAttribute('value',option_value[i]) ;
-		option.innerText = option_value[i]+'像素' ;
+		option.innerHTML = option_value[i]+'像素' ;
 		lineWidthSelect.appendChild(option) ;
 	}
 	lineWidthSelect.setAttribute('id','lineWidth') ;
 	//alpha
-	alphaLabel.innerText = '透明度:' ;
+	alphaLabel.innerHTML = '透明度:' ;
 	alphaLabel.setAttribute('id','alphaLable') ;
 	alphaText.type = 'text' ;
 	alphaText.style.width = '40px' ;
 	alphaText.setAttribute('id','alphaText') ;
 	alphaText.value = '1.0' ;
 	//roundRectRadius
-	roundRectRadiusLabel.innerText = '圆角半径：' ;
+	roundRectRadiusLabel.innerHTML = '圆角半径：' ;
 	roundRectRadiusLabel.setAttribute('id','roundRectRadiusLabel') ;
 	roundRectRadiusText.type = 'text' ;
 	roundRectRadiusText.setAttribute('id','roundRectRadiusText') ;
 	roundRectRadiusText.value = roundRectRadiusValue ;
 	//eraserRadius
-	eraserRadiusLabel.innerText = '大小:' ;
+	eraserRadiusLabel.innerHTML = '大小:' ;
 	eraserRadiusLabel.setAttribute('id','eraserRadiusLabel') ;
-	var eraserRadius = [1,2,5,10,20,30] ;
+	var eraserRadius = [5,30,50,80] ;
 	var eraserRadiusOptions = eraserRadius.map(function(item){
 		var option = document.createElement('option') ;
 		option.setAttribute('value',item) ;
-		option.innerText = item+'px' ;
+		option.innerHTML = item+'px' ;
 		return option ;
 	}) ;
 	eraserRadiusOptions.forEach(function(item){
 		eraserRadiusSelect.appendChild(item) ;
 	}) ;
-	eraserRadiusSelect.value = '10' ;
+	eraserRadiusSelect.value = eraserRadiusValue.toString() ; ;
 	bind('change',lineWidthSelect,function(e){
 		lineWidthValue = this.value ;
 		console.log('now the lineWidth is'+lineWidthValue) ;
@@ -396,6 +411,11 @@ function toolbarHandle(){
 		default:
 	} ;
 }
+function setContext(){
+	drawContext.lineWidth = lineWidthValue ;
+	drawContext.strokeColor = strokeColor ;
+	drawContext.globalAlpha = alphaValue ;
+}
 bind('mousemove',iconsCanvas,function(e){
 	var event = fixEvent(e) ;
 	var clientPos = getCanvasPosition(iconsCanvas,event) ,
@@ -420,68 +440,147 @@ bind('mousedown',drawCanvas,function(e){
 		paintSourcePoint.canvasX = getCanvasPosition(this,event).canvasX ;
 		paintSourcePoint.canvasY = getCanvasPosition(this,event).canvasY ;
 	isMouseDown = true ;
-	mouseDownImageData = drawContext.getImageData(0,0,drawContext.canvas.width,this.height) ;
+	drawContext.save() ;
+	setContext() ;
+	switch(selectedActiveIcon){
+		case 'eraser':{
+			drawContext.beginPath() ;
+			drawContext.putImageData(mouseDownImageData,0,0) ;
+			drawContext.arc(event.canvasX,event.canvasY,eraserRadiusValue,0,Math.PI*2 ,false) ;
+			drawContext.stroke() ;
+			//console.log(['down',event.canvasX, event.canvasY]) ;
+			break ;
+		}
+	}
+	drawContext.restore() ;
 	event.preventDefault() ;//!!使用这个后焦点转移都不能完成，使得alpha值不能获取;但不用后触发的默认事件太多
 	alphaText.blur() ; //blur by hand 
 	event.stopPropagation() ;
 }) ;
 bind('mousemove',drawCanvas,function(e){
-	if(isMouseDown === false) return ;
+	//for some tools ,such as eraser ,we need to draw the tool regardless wheather the mouse is pressed down
 	var event = getEvent(e) ;
 	getCanvasPosition(this,event) ;
 	drawContext.save() ;
-	drawContext.lineWidth = lineWidthValue ;
-	drawContext.strokeColor = strokeColor ;
-	drawContext.globalAlpha = alphaValue ;
-	console.log([lineWidthValue,strokeColor,alphaValue].join(',')) ;
-	switch(selectedActiveIcon){
-		case 'pen' :{
-				drawContext.beginPath() ;
-				drawContext.moveTo(paintSourcePoint.canvasX,paintSourcePoint.canvasY) ;
-				drawContext.lineTo(event.canvasX,event.canvasY) ;
-				drawContext.lineCap = 'round' ;
-				drawContext.stroke() ;
-				drawContext.closePath() ;
-				paintSourcePoint.canvasX = event.canvasX ;
-				paintSourcePoint.canvasY = event.canvasY ; 
-			break ;
+	setContext() ;
+	if(!isMouseDown){
+		if(mouseDownImageData === undefined) {
+			mouseDownImageData = drawContext.getImageData(0,0,this.width , this.height) ;
 		}
-		case 'line' :{
-				drawContext.putImageData(mouseDownImageData,0,0) ;
-				drawContext.beginPath() ;
-				drawContext.moveTo(paintSourcePoint.canvasX,paintSourcePoint.canvasY) ;
-				drawContext.lineTo(event.canvasX , event.canvasY) ;
-				drawContext.stroke() ;
-				drawContext.closePath() ;
-			break ;
+		switch(selectedActiveIcon) {
+			case 'eraser' :{
+					drawContext.putImageData(mouseDownImageData,0,0) ;
+					drawContext.beginPath() ;
+					drawContext.arc(event.canvasX , event.canvasY , eraserRadiusValue , 0, Math.PI*2 , false) ;
+					drawContext.stroke() ;
+					//console.log(['move',event.canvasX, event.canvasY]) ;
+					break ;
+			}
 		}
-		case 'round' :{
-				var roundCenter = {} ,
-					radius ,
-					x1 = paintSourcePoint.canvasX , 
-					y1 = paintSourcePoint.canvasY ,
-					x2 = event.canvasX ,
-					y2 = event.canvasY ; 
-				roundCenter.x = (paintSourcePoint.canvasX + event.canvasX) /2 ; 
-				roundCenter.y = (paintSourcePoint.canvasY + event.canvasY) /2 ;
-				radius = Math.sqrt( Math.pow(x1 - x2,2) + Math.pow(y1 - y2,2))/2 ;
-				drawContext.putImageData(mouseDownImageData,0,0) ;
-				drawContext.beginPath() ;
-				drawContext.arc(roundCenter.x , roundCenter.y , radius,0 ,Math.PI*2 ,false ) ;
-				drawContext.stroke() ;
-				drawContext.closePath() ;
-			break ;
+	}
+	else{
+	//console.log([lineWidthValue,strokeColor,alphaValue].join(',')) ;
+		switch(selectedActiveIcon){
+			case 'pen' :{
+					drawContext.beginPath() ;
+					drawContext.moveTo(paintSourcePoint.canvasX,paintSourcePoint.canvasY) ;
+					drawContext.lineTo(event.canvasX,event.canvasY) ;
+					drawContext.lineCap = 'round' ;
+					drawContext.stroke() ;
+					drawContext.closePath() ;
+					paintSourcePoint.canvasX = event.canvasX ;
+					paintSourcePoint.canvasY = event.canvasY ; 
+				break ;
+			}
+			case 'line' :{
+					drawContext.putImageData(mouseDownImageData,0,0) ;
+					drawContext.beginPath() ;
+					drawContext.moveTo(paintSourcePoint.canvasX,paintSourcePoint.canvasY) ;
+					drawContext.lineTo(event.canvasX , event.canvasY) ;
+					drawContext.stroke() ;
+					drawContext.closePath() ;
+				break ;
+			}
+			case 'rect' :{
+					drawContext.putImageData(mouseDownImageData,0,0) ;
+					drawContext.beginPath() ;
+					drawContext.moveTo(paintSourcePoint.canvasX,event.canvasY - roundRectRadiusValue) ;
+					drawContext.roundRect(paintSourcePoint.canvasX,paintSourcePoint.canvasY,event.canvasX - paintSourcePoint.canvasX ,
+						event.canvasY - paintSourcePoint.canvasY , roundRectRadiusValue) ;
+				break ;
+
+			}
+			case 'round' :{
+					var roundCenter = {} ,
+						radius ,
+						x1 = paintSourcePoint.canvasX , 
+						y1 = paintSourcePoint.canvasY ,
+						x2 = event.canvasX ,
+						y2 = event.canvasY ; 
+					roundCenter.x = (paintSourcePoint.canvasX + event.canvasX) /2 ; 
+					roundCenter.y = (paintSourcePoint.canvasY + event.canvasY) /2 ;
+					radius = Math.sqrt( Math.pow(x1 - x2,2) + Math.pow(y1 - y2,2))/2 ;
+					drawContext.putImageData(mouseDownImageData,0,0) ;
+					drawContext.beginPath() ;
+					drawContext.arc(roundCenter.x , roundCenter.y , radius,0 ,Math.PI*2 ,false ) ;
+					drawContext.stroke() ;
+					drawContext.closePath() ;
+				break ;
+			}
+			case 'eraser':{
+					//clip
+					drawContext.beginPath() ;
+					drawContext.putImageData(mouseDownImageData,0,0) ;
+					drawContext.arc(event.canvasX , event.canvasY , eraserRadiusValue , 0 , Math.PI*2 , false) ;
+					drawContext.clip() ;
+					drawContext.clearRect(0,0,this.width , this.height) ; 
+					mouseDownImageData = drawContext.getImageData(0,0,this.width,this.height) ;
+					drawContext.stroke() ;
+					//console.log(['down_move',event.canvasX, event.canvasY]) ;
+					//alert() ;
+			}
+			
 		}
-		
 	}
 	drawContext.restore() ;
 }) ;
 bind('mouseup',drawCanvas,function(e){
-
 	var event = getEvent(e) ;
+	getCanvasPosition(drawCanvas,event) ;
 	isMouseDown = false ;
+	drawContext.save() ; 
+	switch(selectedActiveIcon){
+		case 'pen':
+		case 'line':
+		case 'round':
+		case 'rect' :{
+			mouseDownImageData = drawContext.getImageData(0,0,this.width ,this.height) ;
+			break ;
+		}
+		case 'eraser' :{
+			drawContext.beginPath() ;
+			drawContext.putImageData(mouseDownImageData,0,0) ;
+			drawContext.arc(event.canvasX , event.canvasY , eraserRadiusValue, 0 ,Math.PI * 2 , false ) ;
+			drawContext.clip() ;
+			drawContext.clearRect(0,0,this.width, this.height) ;
+			mouseDownImageData = drawContext.getImageData(0,0,this.width, this.height) ;
+			drawContext.stroke() ;
+			//console.log(['up',event.canvasX,event.canvasY]) ;
+			break ; 
+		}
+	}
+	drawContext.restore() ;
 }) ;
-
+bind('mouseout',drawCanvas,function(e){
+	drawContext.putImageData(mouseDownImageData,0,0) ;
+	/*
+	var event = getEvent(e) ;
+	var newEvent = document.createEvent('MouseEvents') ;
+	newEvent.initMouseEvent('mouseup',true,true,document.defaultView,0,event.screenX,event.screenY,event.clientX,event.clientY,false,false,false,false,0,event.relatedTarget) ;
+	this.dispatchEvent(newEvent) ;
+	console.log('mouseOut') ;
+	*/
+}) ;
 
 function drawIcons(){
 	drawPen(true) ;
