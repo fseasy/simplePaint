@@ -41,17 +41,23 @@ var iconsCanvas = document.getElementById('icon_panel') ,
 	CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
 		
 		if(Math.abs(w)/2 < r || Math.abs(h/2) < r || r < 0) return ; 
+		if(typeof r != 'number') r = parseFloat(r) ;//!! r is not number !!!!
+		//console.log([x,y,w,h]) ;
 		this.beginPath() ;
 		//drawPoint.call(this,x,y+h-r) ;
 		//drawPoint.call(this,x,y) ;
 		//this.arc(w,h,30,0,Math.PI*2,false) ;
-		this.moveTo(x,y+h-r) ;
-		this.arcTo(x,y,x+100,y,r) ;
-		this.arcTo(x+w,y,x+w,y+r,r) ;
-		this.arcTo(x+w,y+h,x+w-r,y+h,r) ;
-		this.arcTo(x,y+h,x,y+h-r,r) ;
-		this.stroke() ;
-		console.log([x,y,w,h,r]) ;
+		//this.moveTo(x,y+h-r) ; --if the h is negative, the the point y+h -r will not be the corner
+		if(h < 0) {
+			this.moveTo(x,y+h+r) ;
+		}
+		else {
+			this.moveTo(x,y+h-r) ;
+		}
+		this.arcTo(x,y,x+w,y,r) ;//|-
+		this.arcTo(x+w,y,x+w,y+h,r) ; //-|
+		this.arcTo(x+w,y+h,x,y+h,r) ; //_|
+		this.arcTo(x,y+h,x,y,r) ; //|_
 		this.closePath() ;
 	}
 function drawIconBorder(range,shadowOffsetX,shadowOffsetY,shadowBlur){
@@ -366,17 +372,17 @@ function toolbarInit(){
 	bind('blur',alphaText,function(){
 		var numRange = / (^0$)|(^0\.[0-9]$)|^1.0$/; 
 		if(!numRange.test(alphaText.value)) alphaText.value = '1.0' ;
-		alphaValue = alphaText.value ;
+		alphaValue = parseFloat(alphaText.value) ;
 	}) ;
 	bind('keyup',roundRectRadiusText,function(){
 		var validRange = /^\d+$/ ;
 		if(!validRange.test(roundRectRadiusText.value)) roundRectRadiusText.value = this.value.slice(0,-1) ;
 	}) ;
 	bind('blur',roundRectRadiusText,function(){
-		roundRectRadiusValue = this.value ;
+		roundRectRadiusValue = parseFloat(this.value) ;
 	}) ;
 	bind('change',eraserRadiusSelect,function(){
-		eraserRadiusValue = this.value ;
+		eraserRadiusValue = parseFloat(this.value) ;
 		
 	}) ;
 }
@@ -507,6 +513,7 @@ bind('mousemove',drawCanvas,function(e){
 					drawContext.moveTo(paintSourcePoint.canvasX,event.canvasY - roundRectRadiusValue) ;
 					drawContext.roundRect(paintSourcePoint.canvasX,paintSourcePoint.canvasY,event.canvasX - paintSourcePoint.canvasX ,
 						event.canvasY - paintSourcePoint.canvasY , roundRectRadiusValue) ;
+					drawContext.stroke() ;
 				break ;
 
 			}
